@@ -8,6 +8,28 @@ export async function validateDesign(req, res, next) {
     try {
         const { brand_profile, document_data } = req.body;
 
+        // Check if required fields are present
+        if (!brand_profile) {
+            logger.warn('Missing brand_profile in request');
+            return res.status(400).json({
+                success: false,
+                error: 'ValidationError',
+                message: 'brand_profile is required',
+                details: []
+            });
+        }
+
+        if (!document_data) {
+            logger.warn('Missing document_data in request');
+            return res.status(400).json({
+                success: false,
+                error: 'ValidationError',
+                message: 'document_data is required',
+                details: []
+            });
+        }
+
+        // Validate brand profile structure
         const brandValidation = validateBrandProfile(brand_profile);
         if (!brandValidation.valid) {
             logger.warn('Invalid brand profile', { details: brandValidation.details });
@@ -19,6 +41,7 @@ export async function validateDesign(req, res, next) {
             });
         }
 
+        // Validate document data structure
         const documentValidation = validateDocumentData(document_data);
         if (!documentValidation.valid) {
             logger.warn('Invalid document data', { details: documentValidation.details });
@@ -27,6 +50,22 @@ export async function validateDesign(req, res, next) {
                 error: 'ValidationError',
                 message: documentValidation.error,
                 details: documentValidation.details
+            });
+        }
+
+        // Check if document has elements
+        if (!document_data.elements || document_data.elements.length === 0) {
+            logger.info('Empty document - no elements to validate');
+            return res.json({
+                success: true,
+                violations: [],
+                grouped: { by_type: {} },
+                summary: {
+                    total: 0,
+                    errors: 0,
+                    warnings: 0,
+                    by_type: []
+                }
             });
         }
 

@@ -45,7 +45,8 @@ const documentElementSchema = z.object({
         fontSize: z.union([z.number(), z.string()]).optional(),
         fontWeight: z.union([z.string(), z.number()]).optional(),
         fontStyle: z.string().optional(),
-        textAlign: z.string().optional()
+        textAlign: z.string().optional(),
+        color: z.string().optional()
     }).optional(),
     fill: z.union([
         z.string(),

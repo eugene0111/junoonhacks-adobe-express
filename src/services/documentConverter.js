@@ -22,9 +22,15 @@ export function convertAdobeDocument(adobeDocument) {
             convertedElement.styles.font_weight = element.textStyle.fontWeight || null;
             convertedElement.styles.font_style = element.textStyle.fontStyle || null;
             convertedElement.styles.text_align = element.textStyle.textAlign || null;
+            
+            // Extract text color from textStyle if available
+            if (element.textStyle.color) {
+                convertedElement.styles.color = normalizeColor(element.textStyle.color);
+            }
         }
 
-        if (element.fill) {
+        // Extract color from fill if textStyle.color wasn't available
+        if (!convertedElement.styles.color && element.fill) {
             let rawColor = null;
             if (typeof element.fill === 'string') {
                 rawColor = element.fill;
@@ -33,7 +39,9 @@ export function convertAdobeDocument(adobeDocument) {
             } else if (element.fill && typeof element.fill === 'object' && element.fill.type === 'gradient') {
                 rawColor = element.fill.stops?.[0]?.color || null;
             }
-            convertedElement.styles.color = normalizeColor(rawColor);
+            if (rawColor) {
+                convertedElement.styles.color = normalizeColor(rawColor);
+            }
         }
 
         if (element.backgroundColor) {
@@ -44,11 +52,11 @@ export function convertAdobeDocument(adobeDocument) {
             convertedElement.styles.border_radius = element.borderRadius;
         }
 
-        if (element.padding) {
+        if (element.padding !== undefined && element.padding !== null) {
             convertedElement.styles.padding = element.padding;
         }
 
-        if (element.margin) {
+        if (element.margin !== undefined && element.margin !== null) {
             convertedElement.styles.margin = element.margin;
         }
 
