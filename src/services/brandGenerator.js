@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getFormatSizing } from "../utils/formatSizing.js";
 import { getCachedProfile, setCachedProfile } from "../utils/cache.js";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "AIzaSyD63aeeOvmHkDCNSXV8zat5p8M_0ukiNb8");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "AIzaSyAJfN6iLeHpLW-y63b4Vmj7cKb9unlNO3A");
 
 
 export async function generateBrandProfile(brandData) {

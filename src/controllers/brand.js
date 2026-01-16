@@ -42,10 +42,20 @@ export async function generateBrandProfile(req, res, next) {
                 logger.info('Crawling website', { url: website_url });
                 const crawledData = await crawlWebsite(website_url);
                 
+                // Print logo colors if found
+                if (crawledData.logo_colors && crawledData.logo_colors.length > 0) {
+                    console.log(`\n✅ LOGO COLORS EXTRACTED FROM WEBSITE:`);
+                    crawledData.logo_colors.forEach((color, index) => {
+                        console.log(`   ${index + 1}. ${color}`);
+                    });
+                    console.log(`\n`);
+                }
+                
                 logger.info('Processing crawled data with LLM for format', { 
                     format: format,
-                    colors_found: crawledData.extracted_colors?.length || 0,
-                    fonts_found: crawledData.extracted_fonts?.length || 0
+                    colors_found: crawledData.colors_ranked?.length || 0,
+                    heading_fonts_found: crawledData.heading_fonts_ranked?.length || 0,
+                    body_fonts_found: crawledData.body_fonts_ranked?.length || 0
                 });
                 
                 // Process crawled data through LLM to adapt for format
@@ -54,7 +64,6 @@ export async function generateBrandProfile(req, res, next) {
                 // Merge processed data with brand data
                 brandData = {
                     ...brandData,
-                    ...crawledData,
                     // Use brand_statement from request if provided, otherwise use crawled
                     brand_statement: brand_statement || crawledData.brand_statement || brandData.brand_statement,
                     // Override with LLM-processed values
@@ -64,15 +73,27 @@ export async function generateBrandProfile(req, res, next) {
                         processedData.colors.accent,
                         processedData.colors.background,
                         processedData.colors.text
-                    ] : crawledData.extracted_colors,
+                    ] : (crawledData.colors_ranked?.slice(0, 5).map(c => c.color) || []),
                     extracted_fonts: processedData.fonts ? [
                         processedData.fonts.heading,
                         processedData.fonts.body
-                    ] : crawledData.extracted_fonts,
+                    ] : [
+                        crawledData.heading_fonts_ranked?.[0]?.font,
+                        crawledData.body_fonts_ranked?.[0]?.font
+                    ].filter(Boolean),
                     extracted_tone: processedData.tone || crawledData.extracted_tone,
                     // Include border and shadow data if processed
-                    extracted_borders: processedData.borders || crawledData.extracted_borders,
-                    extracted_shadows: processedData.shadows || crawledData.extracted_shadows
+                    extracted_borders: processedData.borders ? [
+                        `radius:${processedData.borders.radius || 0}`,
+                        `width:${processedData.borders.width || 0}`,
+                        `style:${processedData.borders.style || 'solid'}`
+                    ] : crawledData.extracted_borders,
+                    extracted_shadows: processedData.shadows ? [
+                        `x:${processedData.shadows.x || 0},y:${processedData.shadows.y || 0},blur:${processedData.shadows.blur || 0},color:${processedData.shadows.color || '#00000015'}`
+                    ] : crawledData.extracted_shadows,
+                    // Keep font sizes and spacing from crawled data
+                    extracted_font_sizes: crawledData.extracted_font_sizes,
+                    extracted_spacing: crawledData.extracted_spacing
                 };
                 
                 logger.info('Website data processed and adapted for format', {
