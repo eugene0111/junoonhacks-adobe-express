@@ -9,21 +9,17 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Health check
 app.get("/", (req, res) => {
     res.json({ status: "ok", message: "BrandGuard API is running" });
 });
 
-// Generate Brand Profile
 app.post("/brand/generate", async (req, res) => {
     try {
         const { brand_name, brand_statement, format, website_url } = req.body;
 
-        // Validate required fields
         if (!brand_statement && !website_url) {
             return res.status(400).json({
                 error: "Either brand_statement or website_url is required"
@@ -42,18 +38,15 @@ app.post("/brand/generate", async (req, res) => {
             format: format
         };
 
-        // If website URL is provided, crawl it
         if (website_url) {
             try {
                 const crawledData = await crawlWebsite(website_url);
                 brandData = { ...brandData, ...crawledData };
             } catch (error) {
                 console.error("Website crawling error:", error.message);
-                // Continue with AI generation even if crawling fails
             }
         }
 
-        // Generate brand profile using AI
         const brandProfile = await generateBrandProfile(brandData);
 
         res.json({
@@ -67,6 +60,7 @@ app.post("/brand/generate", async (req, res) => {
         });
     }
 });
+
 
 app.listen(port, () => {
     console.log(`BrandGuard API listening on port ${port}`);
