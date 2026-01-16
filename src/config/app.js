@@ -9,6 +9,18 @@ import { errorHandler } from '../middleware/errorHandler.js';
 export function createApp() {
     const app = express();
 
+    
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey || geminiApiKey.trim() === "") {
+        console.warn("⚠️  WARNING: GEMINI_API_KEY is not set in .env file");
+        console.warn("   AI-powered brand generation will use fallback defaults");
+        console.warn("   Get your API key from: https://makersuite.google.com/app/apikey");
+    } else {
+        console.log("✓ GEMINI_API_KEY loaded successfully");
+        console.log(`   Key length: ${geminiApiKey.length} characters`);
+        console.log(`   Key starts with: ${geminiApiKey.substring(0, 10)}...`);
+    }
+
     app.use(cors());
     app.use(express.json());
 

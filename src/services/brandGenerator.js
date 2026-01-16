@@ -3,11 +3,14 @@ import { getFormatSizing } from "../utils/formatSizing.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
+
 export async function generateBrandProfile(brandData) {
     const { brand_name, brand_statement, format, extracted_colors, extracted_fonts, extracted_tone } = brandData;
 
+    
     const formatSizing = getFormatSizing(format);
 
+    
     let prompt = `You are a brand design expert. Generate a comprehensive brand profile for the following brand:
 
 Brand Name: ${brand_name || "Unknown Brand"}
@@ -16,6 +19,7 @@ Post Format: ${format}
 
 `;
 
+    
     if (extracted_colors && extracted_colors.length > 0) {
         prompt += `Extracted Colors from Website: ${extracted_colors.join(", ")}\n`;
     }
@@ -78,24 +82,27 @@ IMPORTANT:
 `;
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         const result = await model.generateContent(prompt);
         const response = result.response;
         
+
         let responseText = response.text;
         
+
         responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        
         
         let brandProfile;
         try {
             brandProfile = JSON.parse(responseText);
-        } catch {
+        } catch (parseError) {
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
                 brandProfile = JSON.parse(jsonMatch[0]);
             } else {
-                throw new Error("Failed to parse JSON from AI response");
+                throw new Error("Failed to parse JSON from AI response",parseError);
             }
         }
 
@@ -118,8 +125,10 @@ IMPORTANT:
     }
 }
 
+
 function generateDefaultBrandProfile(format, brandData) {
     const formatSizing = getFormatSizing(format);
+    
     
     const primaryColor = brandData.extracted_colors?.[0] || "#1E40AF";
     const secondaryColor = brandData.extracted_colors?.[1] || "#64748B";
