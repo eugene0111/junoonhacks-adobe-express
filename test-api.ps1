@@ -29,7 +29,7 @@ try {
     Write-Host "✓ Brand profile generated successfully" -ForegroundColor Green
     Write-Host ""
     Write-Host "Brand Profile:" -ForegroundColor Cyan
-    $response.brand_profile | ConvertTo-Json -Depth 10
+    $response.brand_profile | ConvertTo-Json -Depth 10 | Write-Host
 } catch {
     Write-Host "✗ Error generating brand profile" -ForegroundColor Red
     Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
