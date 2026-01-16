@@ -11,7 +11,7 @@ export async function generateBrandProfile(brandData) {
         return cached;
     }
 
-    const { brand_name, brand_statement, format, extracted_colors, extracted_fonts, extracted_tone } = brandData;
+    // const { brand_name, brand_statement, format, extracted_colors, extracted_fonts, extracted_tone } = brandData;
 
     const { brand_name, brand_statement, format, extracted_colors, extracted_fonts, extracted_tone, extracted_borders, extracted_shadows } = brandData;
 
