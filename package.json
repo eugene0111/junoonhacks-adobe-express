@@ -6,15 +6,7 @@
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "prepare": "husky"
-  },
-  "lint-staged": {
-    "*.js": [
-      "eslint --fix"
-    ]
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
@@ -30,16 +22,6 @@
     "cors": "^2.8.5"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.2",
-    "eslint": "^9.39.2",
-    "eslint-plugin-no-comments": "^1.1.10",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.2.7",
-    "nodemon": "^3.1.11",
-    "@google/generative-ai": "^0.21.0",
-    "puppeteer": "^21.6.1",
-    "axios": "^1.6.5",
-    "dotenv": "^16.3.1",
-    "cors": "^2.8.5"
+    "nodemon": "^3.1.11"
   }
 }

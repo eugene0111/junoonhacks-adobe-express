@@ -11,18 +11,20 @@ export function detectViolations(brandProfile, documentData) {
         const elementViolations = [];
 
         if (element.styles.font_family) {
-            const normalizedFound = normalizeFontFamily(element.styles.font_family);
+            const normalizedFound = element.styles.font_family_normalized || normalizeFontFamily(element.styles.font_family);
             const normalizedHeading = normalizeFontFamily(brandProfile.fonts.heading);
             const normalizedBody = normalizeFontFamily(brandProfile.fonts.body);
 
             if (normalizedFound !== normalizedHeading && normalizedFound !== normalizedBody) {
+                const suggestedFont = determineSuggestedFont(element, brandProfile);
                 elementViolations.push({
                     type: 'font_family',
-                    expected: brandProfile.fonts.heading,
+                    expected: suggestedFont,
                     found: element.styles.font_family,
                     element_id: element.element_id,
                     severity: 'error',
-                    message: `Font family "${element.styles.font_family}" does not match brand fonts (${brandProfile.fonts.heading} or ${brandProfile.fonts.body})`
+                    message: `Font family "${element.styles.font_family}" does not match brand fonts (${brandProfile.fonts.heading} or ${brandProfile.fonts.body})`,
+                    found_font_size: element.styles.font_size
                 });
             }
         }
@@ -53,7 +55,7 @@ export function detectViolations(brandProfile, documentData) {
         }
 
         if (element.styles.color) {
-            const normalizedFound = normalizeColor(element.styles.color);
+            const normalizedFound = element.styles.color_normalized || normalizeColor(element.styles.color);
             const brandColors = [
                 normalizeColor(brandProfile.colors.primary),
                 normalizeColor(brandProfile.colors.secondary),
@@ -62,9 +64,10 @@ export function detectViolations(brandProfile, documentData) {
             ];
 
             if (!isColorInPalette(normalizedFound, brandColors)) {
+                const suggestedColor = findClosestBrandColor(normalizedFound, brandProfile.colors);
                 elementViolations.push({
                     type: 'color',
-                    expected: brandProfile.colors.text,
+                    expected: suggestedColor,
                     found: element.styles.color,
                     element_id: element.element_id,
                     severity: 'warning',
@@ -74,7 +77,7 @@ export function detectViolations(brandProfile, documentData) {
         }
 
         if (element.styles.background_color) {
-            const normalizedFound = normalizeColor(element.styles.background_color);
+            const normalizedFound = element.styles.background_color_normalized || normalizeColor(element.styles.background_color);
             const brandBackground = normalizeColor(brandProfile.colors.background);
 
             if (normalizedFound !== brandBackground) {
@@ -110,4 +113,31 @@ function isColorInPalette(color, palette) {
         if (!paletteColor) return false;
         return normalizeColor(paletteColor) === normalizedColor;
     });
+}
+
+function determineSuggestedFont(element, brandProfile) {
+    if (!element.styles.font_size || !brandProfile.fonts) {
+        return brandProfile.fonts.body;
+    }
+
+    const fontSize = parseFloat(element.styles.font_size);
+    const { h1_size, h2_size, h3_size } = brandProfile.fonts;
+
+    if (fontSize >= h1_size - 2) {
+        return brandProfile.fonts.heading;
+    } else if (fontSize >= h2_size - 2) {
+        return brandProfile.fonts.heading;
+    } else if (fontSize >= h3_size - 2) {
+        return brandProfile.fonts.heading;
+    }
+
+    return brandProfile.fonts.body;
+}
+
+function findClosestBrandColor(foundColor, brandColors) {
+    if (!foundColor || !brandColors) {
+        return brandColors?.text || '#000000';
+    }
+
+    return brandColors.text || brandColors.primary || '#000000';
 }

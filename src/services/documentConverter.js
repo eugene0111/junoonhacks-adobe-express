@@ -9,29 +9,36 @@ export function convertAdobeDocument(adobeDocument) {
         const convertedElement = {
             element_id: element.id || `element_${index}`,
             type: element.type || 'unknown',
-            styles: {}
+            styles: {},
+            original_id: element.id
         };
 
         if (element.textStyle) {
-            convertedElement.styles.font_family = element.textStyle.fontFamily || null;
-            convertedElement.styles.font_size = element.textStyle.fontSize || null;
+            const rawFontFamily = element.textStyle.fontFamily || null;
+            convertedElement.styles.font_family = rawFontFamily;
+            convertedElement.styles.font_family_normalized = rawFontFamily ? normalizeFontFamily(rawFontFamily) : null;
+            convertedElement.styles.font_size = element.textStyle.fontSize ? parseFloat(element.textStyle.fontSize) : null;
             convertedElement.styles.font_weight = element.textStyle.fontWeight || null;
             convertedElement.styles.font_style = element.textStyle.fontStyle || null;
             convertedElement.styles.text_align = element.textStyle.textAlign || null;
         }
 
         if (element.fill) {
+            let rawColor = null;
             if (typeof element.fill === 'string') {
-                convertedElement.styles.color = element.fill;
+                rawColor = element.fill;
             } else if (element.fill.type === 'solid') {
-                convertedElement.styles.color = element.fill.color || null;
+                rawColor = element.fill.color || null;
             } else if (element.fill.type === 'gradient') {
-                convertedElement.styles.color = element.fill.stops?.[0]?.color || null;
+                rawColor = element.fill.stops?.[0]?.color || null;
             }
+            convertedElement.styles.color = rawColor;
+            convertedElement.styles.color_normalized = rawColor ? normalizeColor(rawColor) : null;
         }
 
         if (element.backgroundColor) {
             convertedElement.styles.background_color = element.backgroundColor;
+            convertedElement.styles.background_color_normalized = normalizeColor(element.backgroundColor);
         }
 
         if (element.borderRadius) {
