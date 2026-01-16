@@ -1,18 +1,21 @@
 import { planFixes } from '../services/fixPlanner.js';
+import { validateBrandProfile, validateViolations, validateActions } from '../middleware/validateRequest.js';
 
 export async function planFixesEndpoint(req, res, next) {
     try {
         const { violations, brand_profile, options } = req.body;
 
-        if (!violations || !Array.isArray(violations)) {
+        const violationsValidation = validateViolations(violations);
+        if (!violationsValidation.valid) {
             return res.status(400).json({
-                error: 'violations array is required'
+                error: violationsValidation.error
             });
         }
 
-        if (!brand_profile) {
+        const brandValidation = validateBrandProfile(brand_profile);
+        if (!brandValidation.valid) {
             return res.status(400).json({
-                error: 'brand_profile is required'
+                error: brandValidation.error
             });
         }
 
@@ -20,10 +23,16 @@ export async function planFixesEndpoint(req, res, next) {
 
         res.json({
             fix_plan: fixPlan,
-            ready_to_execute: true
+            ready_to_execute: true,
+            estimated_time_ms: fixPlan.actions.length * 50
         });
     } catch (error) {
         console.error('Error planning fixes:', error);
+        if (error.message === 'brandProfile is required for fix planning') {
+            return res.status(400).json({
+                error: error.message
+            });
+        }
         next(error);
     }
 }
@@ -32,24 +41,42 @@ export async function executeFixes(req, res, next) {
     try {
         const { actions } = req.body;
 
-        if (!actions || !Array.isArray(actions)) {
+        const actionsValidation = validateActions(actions);
+        if (!actionsValidation.valid) {
             return res.status(400).json({
-                error: 'actions array is required'
+                error: actionsValidation.error
             });
         }
 
-        const executed = actions.map(action => ({
-            ...action,
-            status: 'success',
-            executed_at: new Date().toISOString()
-        }));
+        const executed = actions.map((action, index) => {
+            try {
+                return {
+                    ...action,
+                    status: 'success',
+                    executed_at: new Date().toISOString(),
+                    execution_order: index + 1
+                };
+            } catch (execError) {
+                return {
+                    ...action,
+                    status: 'failed',
+                    error: execError.message,
+                    executed_at: new Date().toISOString(),
+                    execution_order: index + 1
+                };
+            }
+        });
+
+        const successful = executed.filter(a => a.status === 'success').length;
+        const failed = executed.filter(a => a.status === 'failed').length;
 
         res.json({
             executed: executed,
             summary: {
                 total: executed.length,
-                successful: executed.filter(a => a.status === 'success').length,
-                failed: executed.filter(a => a.status === 'failed').length
+                successful: successful,
+                failed: failed,
+                success_rate: executed.length > 0 ? (successful / executed.length * 100).toFixed(2) + '%' : '0%'
             }
         });
     } catch (error) {

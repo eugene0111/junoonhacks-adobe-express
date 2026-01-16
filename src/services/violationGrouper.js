@@ -10,17 +10,24 @@ export function groupViolations(violations) {
     };
 
     violations.forEach(violation => {
-        if (!grouped.by_type[violation.type]) {
-            grouped.by_type[violation.type] = [];
-        }
-        grouped.by_type[violation.type].push(violation);
+        const violationType = violation.type || 'unknown';
+        const elementId = violation.element_id || 'unknown';
+        const severity = violation.severity || 'warning';
 
-        if (!grouped.by_element[violation.element_id]) {
-            grouped.by_element[violation.element_id] = [];
+        if (!grouped.by_type[violationType]) {
+            grouped.by_type[violationType] = [];
         }
-        grouped.by_element[violation.element_id].push(violation);
+        grouped.by_type[violationType].push(violation);
 
-        grouped.by_severity[violation.severity].push(violation);
+        if (!grouped.by_element[elementId]) {
+            grouped.by_element[elementId] = [];
+        }
+        grouped.by_element[elementId].push(violation);
+
+        if (!grouped.by_severity[severity]) {
+            grouped.by_severity[severity] = [];
+        }
+        grouped.by_severity[severity].push(violation);
     });
 
     grouped.similar_violations = findSimilarViolations(violations);
