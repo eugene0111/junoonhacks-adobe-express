@@ -8,9 +8,160 @@ export function detectViolations(brandProfile, documentData) {
         return violations;
     }
 
+    const canvasWidth = documentData.width || 0;
+    const canvasHeight = documentData.height || 0;
+    const elements = documentData.elements;
+
+    // Helper to safely get bounds
+    const getBounds = (el) => {
+        if (!el.bounds) return { x: 0, y: 0, width: 0, height: 0 };
+        return el.bounds;
+    };
+
+    // Helper to check if element is Artboard/Background to be ignored
+    const isIgnoredElement = (element, bounds) => {
+        // 1. Explicit Artboard Check (Type + Position 0,0)
+        if (element.type === 'ab:Artboard' && Math.abs(bounds.x) < 1 && Math.abs(bounds.y) < 1) {
+            return true;
+        }
+        // 2. Full Canvas Match Check
+        if (canvasWidth > 0 && canvasHeight > 0) {
+            if (Math.abs(bounds.width - canvasWidth) < 2 && 
+                Math.abs(bounds.height - canvasHeight) < 2 &&
+                Math.abs(bounds.x) < 2 &&
+                Math.abs(bounds.y) < 2) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // ==========================================
+    // 1. NEW SPATIAL VALIDATION LOGIC
+    // ==========================================
+    if (brandProfile.spacing) {
+        const { padding, gap } = brandProfile.spacing;
+        
+        elements.forEach((element, index) => {
+            const bounds = getBounds(element);
+            
+            // SKIP Artboard/Background
+            if (isIgnoredElement(element, bounds)) {
+                return;
+            }
+
+            // A. Boundary & Padding Checks
+            if (canvasWidth > 0) {
+                const rightEdge = bounds.x + bounds.width;
+                const bottomEdge = bounds.y + bounds.height;
+                
+                // 1. Out of Bounds Check (Negative or Exceeds Size)
+                const outOfBoundsErrors = [];
+                
+                if (bounds.x < 0) outOfBoundsErrors.push(`Left edge is negative (${bounds.x.toFixed(1)}px)`);
+                if (bounds.y < 0) outOfBoundsErrors.push(`Top edge is negative (${bounds.y.toFixed(1)}px)`);
+                if (rightEdge > canvasWidth) outOfBoundsErrors.push(`Right edge exceeds width (${rightEdge.toFixed(1)}px > ${canvasWidth}px)`);
+                if (bottomEdge > canvasHeight) outOfBoundsErrors.push(`Bottom edge exceeds height (${bottomEdge.toFixed(1)}px > ${canvasHeight}px)`);
+
+                if (outOfBoundsErrors.length > 0) {
+                    violations.push({
+                        type: 'out_of_bounds',
+                        expected: { width: canvasWidth, height: canvasHeight },
+                        found: { x: bounds.x, y: bounds.y, right: rightEdge, bottom: bottomEdge },
+                        element_id: element.element_id,
+                        severity: 'error',
+                        message: `Element is out of bounds: ${outOfBoundsErrors.join(', ')}`
+                    });
+                } else {
+                    // 2. Padding Check (Only if inside bounds)
+                    const distLeft = bounds.x;
+                    const distTop = bounds.y;
+                    const distRight = canvasWidth - rightEdge;
+                    const distBottom = canvasHeight - bottomEdge;
+
+                    const paddingErrors = [];
+                    // Check if distance is LESS than padding (Strict check)
+                    if (distLeft < padding) paddingErrors.push(`Left (${distLeft.toFixed(1)}px < ${padding}px)`);
+                    if (distTop < padding) paddingErrors.push(`Top (${distTop.toFixed(1)}px < ${padding}px)`);
+                    if (distRight < padding) paddingErrors.push(`Right (${distRight.toFixed(1)}px < ${padding}px)`);
+                    if (distBottom < padding) paddingErrors.push(`Bottom (${distBottom.toFixed(1)}px < ${padding}px)`);
+
+                    if (paddingErrors.length > 0) {
+                        violations.push({
+                            type: 'spacing_padding',
+                            expected: { padding: padding },
+                            found: { left: distLeft, top: distTop, right: distRight, bottom: distBottom },
+                            element_id: element.element_id,
+                            severity: 'error',
+                            message: `Element violates padding safety zone: ${paddingErrors.join(', ')}`
+                        });
+                    }
+                }
+            }
+
+            // B. Element-to-Element Gap & Overlap Check
+            for (let j = index + 1; j < elements.length; j++) {
+                const otherElement = elements[j];
+                const otherBounds = getBounds(otherElement);
+                
+                // SKIP if the OTHER element is Artboard/Background
+                if (isIgnoredElement(otherElement, otherBounds)) {
+                    continue;
+                }
+
+                // Check Overlap
+                const isOverlapping = (
+                    bounds.x < otherBounds.x + otherBounds.width &&
+                    bounds.x + bounds.width > otherBounds.x &&
+                    bounds.y < otherBounds.y + otherBounds.height &&
+                    bounds.y + bounds.height > otherBounds.y
+                );
+
+                if (isOverlapping) {
+                    violations.push({
+                        type: 'spacing_overlap',
+                        expected: 'No Overlap',
+                        found: 'Overlapping',
+                        element_id: element.element_id,
+                        related_element_id: otherElement.element_id,
+                        severity: 'error',
+                        message: `Element overlaps with ${otherElement.element_id || 'another element'}`
+                    });
+                } else {
+                    // Check Gap (Distance between edges)
+                    const horizontalDist = Math.max(0, bounds.x - (otherBounds.x + otherBounds.width), otherBounds.x - (bounds.x + bounds.width));
+                    const verticalDist = Math.max(0, bounds.y - (otherBounds.y + otherBounds.height), otherBounds.y - (bounds.y + bounds.height));
+                    
+                    const distance = Math.max(horizontalDist, verticalDist);
+
+                    if (distance > 0 && distance < gap) {
+                        violations.push({
+                            type: 'spacing_gap',
+                            expected: { gap: gap },
+                            found: { distance: distance },
+                            element_id: element.element_id,
+                            related_element_id: otherElement.element_id,
+                            severity: 'warning',
+                            message: `Distance (${distance.toFixed(1)}px) is less than required gap (${gap}px)`
+                        });
+                    }
+                }
+            }
+        });
+    }
+
+    // ==========================================
+    // 2. ORIGINAL STYLE VALIDATION LOGIC
+    // ==========================================
     documentData.elements.forEach(element => {
         const elementViolations = [];
+        
+        // SKIP Artboard/Background for all style checks
+        if (isIgnoredElement(element, getBounds(element))) {
+            return;
+        }
 
+        // --- Font Family ---
         if (element.styles.font_family) {
             const normalizedFound = element.styles.font_family;
             const normalizedHeading = normalizeFontFamily(brandProfile.fonts.heading);
@@ -30,6 +181,7 @@ export function detectViolations(brandProfile, documentData) {
             }
         }
 
+        // --- Font Size ---
         if (element.styles.font_size) {
             const foundSize = parseFloat(element.styles.font_size);
             const allowedSizes = [
@@ -55,6 +207,7 @@ export function detectViolations(brandProfile, documentData) {
             }
         }
 
+        // --- Color & Contrast ---
         if (element.styles.color) {
             const normalizedFound = element.styles.color;
             const brandColors = [
@@ -94,6 +247,7 @@ export function detectViolations(brandProfile, documentData) {
             }
         }
 
+        // --- Background Color ---
         if (element.styles.background_color) {
             const normalizedFound = element.styles.background_color;
             const brandBackground = normalizeColor(brandProfile.colors.background);
@@ -110,6 +264,7 @@ export function detectViolations(brandProfile, documentData) {
             }
         }
 
+        // --- Shadows ---
         if (element.styles.shadow && brandProfile.shadows) {
             const foundShadow = element.styles.shadow;
             const brandShadow = brandProfile.shadows;
@@ -135,6 +290,7 @@ export function detectViolations(brandProfile, documentData) {
             }
         }
 
+        // --- Borders ---
         if (element.styles.border_radius !== undefined && brandProfile.borders) {
             const foundRadius = element.styles.border_radius;
             const brandRadius = brandProfile.borders.radius;
@@ -152,6 +308,7 @@ export function detectViolations(brandProfile, documentData) {
             }
         }
 
+        // --- Original Property-Based Spacing Checks ---
         if (brandProfile.spacing) {
             const spacingViolations = [];
 

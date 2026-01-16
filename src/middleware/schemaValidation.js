@@ -40,6 +40,13 @@ const brandProfileSchema = z.object({
 const documentElementSchema = z.object({
     id: z.string().optional(),
     type: z.string().optional(),
+    // Added bounds for spatial validation
+    bounds: z.object({
+        x: z.number(),
+        y: z.number(),
+        width: z.number(),
+        height: z.number()
+    }).optional(),
     textStyle: z.object({
         fontFamily: z.string().optional(),
         fontSize: z.union([z.number(), z.string()]).optional(),
@@ -66,6 +73,11 @@ const documentElementSchema = z.object({
 });
 
 const documentDataSchema = z.object({
+    // Added dimensions for boundary calculations
+    dimensions: z.object({
+        width: z.number(),
+        height: z.number()
+    }).optional(),
     elements: z.array(documentElementSchema)
 });
 
