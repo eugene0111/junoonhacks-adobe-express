@@ -46,9 +46,12 @@ export function planFixes(violations, brandProfile, options = {}) {
         });
     } else {
         violations.forEach(violation => {
-            const action = createFixAction(violation, brandProfile);
-            if (action) {
-                actions.push(action);
+            // Avoid duplicate fixes for the same element and same action type
+            if (!actions.some(a => a.element_id === violation.element_id && a.action === getActionType(violation.type))) {
+                const action = createFixAction(violation, brandProfile);
+                if (action) {
+                    actions.push(action);
+                }
             }
         });
     }
@@ -87,13 +90,25 @@ function getActionType(violationType) {
         'contrast': 'update_color',
         'shadow': 'apply_shadow',
         'border': 'update_border',
-        'spacing': 'apply_spacing'
+        'spacing': 'apply_spacing',
+        'spacing_padding': 'move_element',
+        'out_of_bounds': 'move_element',
+        'spacing_overlap': 'move_element'
     };
     return actionMap[violationType] || 'unknown';
 }
 
 function createFixAction(violation, brandProfile) {
     switch (violation.type) {
+        case 'spacing_overlap':
+            return createOverlapFix(violation, brandProfile);
+
+        case 'spacing_padding':
+            return createSpatialPaddingFix(violation, brandProfile);
+
+        case 'out_of_bounds':
+            return createOutOfBoundsFix(violation);
+
         case 'font_size':
             return {
                 action: 'update_font_size',
@@ -123,13 +138,22 @@ function createFixAction(violation, brandProfile) {
         }
 
         case 'color':
+            const validPalette = [
+                brandProfile.colors.primary,
+                brandProfile.colors.secondary,
+                brandProfile.colors.accent,
+                brandProfile.colors.text,
+                brandProfile.colors.background
+            ].filter(Boolean);
+
             return {
                 action: 'update_color',
                 element_id: violation.element_id,
                 value: violation.expected,
                 description: `Update color from "${violation.found}" to "${violation.expected}"`,
                 payload: {
-                    fill: violation.expected
+                    fill: violation.expected,
+                    brandPalette: validPalette
                 }
             };
 
@@ -168,6 +192,139 @@ function createFixAction(violation, brandProfile) {
             return null;
     }
 }
+
+// --- NEW FIX LOGIC ---
+
+function createOverlapFix(violation, brandProfile) {
+    // If the detector didn't pass bounds, we cannot calculate a move.
+    if (!violation.found || !violation.found.bounds || !violation.found.related_bounds) {
+        return null;
+    }
+
+    const A = violation.found.bounds;
+    const B = violation.found.related_bounds;
+    const gap = brandProfile.spacing?.gap || 10;
+
+    // We want to move A so it no longer overlaps B.
+    // There are 4 possible directions. We choose the smallest move.
+
+    // 1. Move A to the LEFT of B
+    // New A.x + A.width = B.x - gap  =>  New A.x = B.x - gap - A.width
+    // dx = New A.x - Old A.x
+    const moveLeftVal = (B.x - gap - A.width) - A.x;
+
+    // 2. Move A to the RIGHT of B
+    // New A.x = B.x + B.width + gap
+    // dx = New A.x - Old A.x
+    const moveRightVal = (B.x + B.width + gap) - A.x;
+
+    // 3. Move A UP (Above B)
+    // New A.y + A.height = B.y - gap => New A.y = B.y - gap - A.height
+    // dy = New A.y - Old A.y
+    const moveUpVal = (B.y - gap - A.height) - A.y;
+
+    // 4. Move A DOWN (Below B)
+    // New A.y = B.y + B.height + gap
+    // dy = New A.y - Old A.y
+    const moveDownVal = (B.y + B.height + gap) - A.y;
+
+    // Determine minimal distance (absolute value of move)
+    const moves = [
+        { dir: 'left',  val: Math.abs(moveLeftVal),  dx: moveLeftVal,  dy: 0 },
+        { dir: 'right', val: Math.abs(moveRightVal), dx: moveRightVal, dy: 0 },
+        { dir: 'up',    val: Math.abs(moveUpVal),    dx: 0,            dy: moveUpVal },
+        { dir: 'down',  val: Math.abs(moveDownVal),  dx: 0,            dy: moveDownVal }
+    ];
+
+    // Sort by smallest distance
+    moves.sort((a, b) => a.val - b.val);
+    const best = moves[0];
+
+    return {
+        action: 'move_element',
+        element_id: violation.element_id,
+        value: { dx: best.dx, dy: best.dy },
+        description: `Move element ${best.dir} to clear overlap with other element`,
+        payload: {
+            motion: {
+                dx: best.dx,
+                dy: best.dy,
+                isAbsolute: false
+            }
+        }
+    };
+}
+
+function createSpatialPaddingFix(violation, brandProfile) {
+    const padding = brandProfile.spacing?.padding || 0;
+    
+    let moveX = 0;
+    let moveY = 0;
+    const found = violation.found;
+
+    if (found.left < padding) {
+        moveX += (padding - found.left);
+    }
+    if (found.top < padding) {
+        moveY += (padding - found.top);
+    }
+    if (found.right < padding) {
+        moveX -= (padding - found.right);
+    }
+    if (found.bottom < padding) {
+        moveY -= (padding - found.bottom);
+    }
+
+    return {
+        action: 'move_element',
+        element_id: violation.element_id,
+        value: { dx: moveX, dy: moveY },
+        description: `Adjust position to respect padding`,
+        payload: {
+            motion: {
+                dx: moveX,
+                dy: moveY,
+                isAbsolute: false
+            }
+        }
+    };
+}
+
+function createOutOfBoundsFix(violation) {
+    const bounds = violation.found;
+    const canvas = violation.expected;
+    
+    let newX = bounds.x;
+    let newY = bounds.y;
+    
+    if (bounds.x < 0) newX = 0;
+    if (bounds.y < 0) newY = 0;
+    
+    // Check right edge
+    if (bounds.right > canvas.width) {
+        newX = canvas.width - (bounds.right - bounds.x);
+    }
+    // Check bottom edge
+    if (bounds.bottom > canvas.height) {
+        newY = canvas.height - (bounds.bottom - bounds.y);
+    }
+
+    return {
+        action: 'move_element',
+        element_id: violation.element_id,
+        value: { x: newX, y: newY },
+        description: `Move element inside canvas boundaries`,
+        payload: {
+            motion: {
+                x: newX,
+                y: newY,
+                isAbsolute: true
+            }
+        }
+    };
+}
+
+// --- EXISTING HELPERS ---
 
 function createShadowAction(violation, brandProfile) {
     const shadow = brandProfile.shadows || {

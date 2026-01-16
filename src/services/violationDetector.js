@@ -52,7 +52,6 @@ export function detectViolations(brandProfile, documentData) {
 
             // A. Boundary & Padding Checks
             if (canvasWidth > 0) {
-                // ADDING DIMENSIONS TO COORDINATES to get the last point (Right/Bottom edges)
                 const rightEdge = bounds.x + bounds.width;
                 const bottomEdge = bounds.y + bounds.height;
                 
@@ -111,7 +110,6 @@ export function detectViolations(brandProfile, documentData) {
                 }
 
                 // Check Overlap
-                // Uses (x + width) to find the right edge for comparison
                 const isOverlapping = (
                     bounds.x < otherBounds.x + otherBounds.width &&
                     bounds.x + bounds.width > otherBounds.x &&
@@ -123,7 +121,11 @@ export function detectViolations(brandProfile, documentData) {
                     violations.push({
                         type: 'spacing_overlap',
                         expected: 'No Overlap',
-                        found: 'Overlapping',
+                        found: {
+                            description: 'Overlapping',
+                            bounds: bounds,           // Pass bounds for Fix Planner
+                            related_bounds: otherBounds // Pass other bounds for Fix Planner
+                        },
                         element_id: element.element_id,
                         related_element_id: otherElement.element_id,
                         severity: 'error',
@@ -153,7 +155,7 @@ export function detectViolations(brandProfile, documentData) {
     }
 
     // ==========================================
-    // 2. ORIGINAL STYLE VALIDATION LOGIC
+    // 2. STYLE VALIDATION LOGIC
     // ==========================================
     documentData.elements.forEach(element => {
         const elementViolations = [];
