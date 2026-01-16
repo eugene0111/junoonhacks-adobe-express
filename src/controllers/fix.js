@@ -16,7 +16,8 @@ export async function planFixesEndpoint(req, res, next) {
                 details: violationsValidation.details
             });
         }
-
+        logger.info('Received brand_profile', brand_profile);
+        logger.warn('Brand profile validation failed', brandValidation);
         const brandValidation = validateBrandProfile(brand_profile);
         if (!brandValidation.valid) {
             logger.warn('Invalid brand profile in fix planning', { details: brandValidation.details });
