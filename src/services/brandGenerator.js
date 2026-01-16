@@ -3,24 +3,11 @@ import { getFormatSizing } from "../utils/formatSizing.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-/**
- * Generate brand profile using AI
- * @param {Object} brandData - Brand information
- * @param {string} brandData.brand_name - Brand name
- * @param {string} brandData.brand_statement - Brand statement/brief
- * @param {string} brandData.format - Post format type
- * @param {Array} brandData.extracted_colors - Colors extracted from website (optional)
- * @param {Array} brandData.extracted_fonts - Fonts extracted from website (optional)
- * @param {string} brandData.extracted_tone - Tone extracted from website (optional)
- * @returns {Promise<Object>} Generated brand profile
- */
 export async function generateBrandProfile(brandData) {
     const { brand_name, brand_statement, format, extracted_colors, extracted_fonts, extracted_tone } = brandData;
 
-    // Get format-specific sizing rules
     const formatSizing = getFormatSizing(format);
 
-    // Build prompt for Gemini
     let prompt = `You are a brand design expert. Generate a comprehensive brand profile for the following brand:
 
 Brand Name: ${brand_name || "Unknown Brand"}
@@ -29,7 +16,6 @@ Post Format: ${format}
 
 `;
 
-    // Add extracted data if available
     if (extracted_colors && extracted_colors.length > 0) {
         prompt += `Extracted Colors from Website: ${extracted_colors.join(", ")}\n`;
     }
@@ -92,25 +78,19 @@ IMPORTANT:
 `;
 
     try {
-        // Get the Gemini Pro model
         const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-        // Generate content
         const result = await model.generateContent(prompt);
         const response = result.response;
         
-        // Extract JSON from response
         let responseText = response.text;
         
-        // Remove markdown code blocks if present
         responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         
-        // Parse JSON
         let brandProfile;
         try {
             brandProfile = JSON.parse(responseText);
-        } catch (parseError) {
-            // Try to extract JSON from the response
+        } catch {
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
                 brandProfile = JSON.parse(jsonMatch[0]);
@@ -119,7 +99,6 @@ IMPORTANT:
             }
         }
 
-        // Ensure format-specific sizing is enforced
         brandProfile.fonts.h1_size = formatSizing.fonts.h1_size;
         brandProfile.fonts.h2_size = formatSizing.fonts.h2_size;
         brandProfile.fonts.h3_size = formatSizing.fonts.h3_size;
@@ -135,21 +114,13 @@ IMPORTANT:
     } catch (error) {
         console.error("Error generating brand profile with AI:", error);
         
-        // Fallback to default brand profile if AI fails
         return generateDefaultBrandProfile(format, brandData);
     }
 }
 
-/**
- * Generate a default brand profile when AI fails
- * @param {string} format - Post format type
- * @param {Object} brandData - Brand information
- * @returns {Object} Default brand profile
- */
 function generateDefaultBrandProfile(format, brandData) {
     const formatSizing = getFormatSizing(format);
     
-    // Use extracted colors if available, otherwise use defaults
     const primaryColor = brandData.extracted_colors?.[0] || "#1E40AF";
     const secondaryColor = brandData.extracted_colors?.[1] || "#64748B";
     const accentColor = brandData.extracted_colors?.[2] || "#FACC15";
