@@ -1,9 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getFormatSizing } from "../utils/formatSizing.js";
 
-const anthropic = new Anthropic({
-    apiKey: process.env.CLAUDE_API_KEY || ""
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 /**
  * Generate brand profile using AI
@@ -22,7 +20,7 @@ export async function generateBrandProfile(brandData) {
     // Get format-specific sizing rules
     const formatSizing = getFormatSizing(format);
 
-    // Build prompt for Claude
+    // Build prompt for Gemini
     let prompt = `You are a brand design expert. Generate a comprehensive brand profile for the following brand:
 
 Brand Name: ${brand_name || "Unknown Brand"}
@@ -94,17 +92,15 @@ IMPORTANT:
 `;
 
     try {
-        const message = await anthropic.messages.create({
-            model: "claude-3-5-sonnet-20241022",
-            max_tokens: 2000,
-            messages: [{
-                role: "user",
-                content: prompt
-            }]
-        });
+        // Get the Gemini Pro model
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
+        // Generate content
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        
         // Extract JSON from response
-        let responseText = message.content[0].text;
+        let responseText = response.text();
         
         // Remove markdown code blocks if present
         responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();

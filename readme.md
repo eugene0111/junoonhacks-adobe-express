@@ -237,7 +237,7 @@ https://brandguard-backend.onrender.com
 - **Frontend:** HTML, CSS, JavaScript
 - **Adobe:** Express Add-on SDK
 - **Backend:** FastAPI/Express
-- **AI:** Claude API for brand generation
+- **AI:** Google Gemini API for brand generation
 - **Deployment:** Render/Railway/Fly.io
 
 ---
@@ -274,7 +274,7 @@ pip install -r requirements.txt
 **Configure environment:**
 ```bash
 # Backend .env
-CLAUDE_API_KEY=your_key_here
+GEMINI_API_KEY=your_key_here
 PORT=3000
 
 # Frontend config.js

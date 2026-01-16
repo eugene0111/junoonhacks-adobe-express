@@ -9,9 +9,9 @@ npm install
 
 2. **Set up environment variables:**
    - Copy `.env.example` to `.env`
-   - Add your Claude API key:
+   - Add your Google Gemini API key:
    ```
-   CLAUDE_API_KEY=your_claude_api_key_here
+   GEMINI_API_KEY=your_gemini_api_key_here
    PORT=3000
    ```
 
@@ -56,7 +56,7 @@ npm run dev
 ## Features Implemented (Person A)
 
 ✅ **Brand Profile Generation**
-- AI-powered brand profile generation using Claude API
+- AI-powered brand profile generation using Google Gemini API
 - Takes input: brand name, statement/brief, and post format
 - Outputs complete brand profile in specified format
 
@@ -105,5 +105,6 @@ curl -X POST http://localhost:3000/brand/generate \
 ## Notes
 
 - Website crawling may take a few seconds
-- If Claude API key is not set, the system will use fallback default values
+- If Gemini API key is not set, the system will use fallback default values
 - Format sizing is strictly enforced - sizes cannot be changed for a given format
+- Get your Gemini API key from: https://makersuite.google.com/app/apikey
