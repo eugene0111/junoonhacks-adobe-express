@@ -97,10 +97,10 @@ IMPORTANT:
 
         // Generate content
         const result = await model.generateContent(prompt);
-        const response = await result.response;
+        const response = result.response;
         
         // Extract JSON from response
-        let responseText = response.text();
+        let responseText = response.text;
         
         // Remove markdown code blocks if present
         responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
