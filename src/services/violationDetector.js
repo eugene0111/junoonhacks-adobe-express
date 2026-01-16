@@ -110,6 +110,87 @@ export function detectViolations(brandProfile, documentData) {
             }
         }
 
+        if (element.styles.shadow && brandProfile.shadows) {
+            const foundShadow = element.styles.shadow;
+            const brandShadow = brandProfile.shadows;
+            const tolerance = 2;
+
+            if (brandShadow.enabled) {
+                const shadowMismatch = 
+                    (foundShadow.x !== undefined && Math.abs(foundShadow.x - brandShadow.x) > tolerance) ||
+                    (foundShadow.y !== undefined && Math.abs(foundShadow.y - brandShadow.y) > tolerance) ||
+                    (foundShadow.blur !== undefined && Math.abs(foundShadow.blur - brandShadow.blur) > tolerance) ||
+                    (foundShadow.color && !areColorsEqual(foundShadow.color, brandShadow.color));
+
+                if (shadowMismatch) {
+                    elementViolations.push({
+                        type: 'shadow',
+                        expected: brandShadow,
+                        found: foundShadow,
+                        element_id: element.element_id,
+                        severity: 'warning',
+                        message: 'Shadow does not match brand shadow settings'
+                    });
+                }
+            }
+        }
+
+        if (element.styles.border_radius !== undefined && brandProfile.borders) {
+            const foundRadius = element.styles.border_radius;
+            const brandRadius = brandProfile.borders.radius;
+            const tolerance = 2;
+
+            if (Math.abs(foundRadius - brandRadius) > tolerance) {
+                elementViolations.push({
+                    type: 'border',
+                    expected: brandProfile.borders,
+                    found: { radius: foundRadius },
+                    element_id: element.element_id,
+                    severity: 'warning',
+                    message: `Border radius ${foundRadius}px does not match brand radius ${brandRadius}px`
+                });
+            }
+        }
+
+        if (brandProfile.spacing) {
+            const spacingViolations = [];
+
+            if (element.styles.padding !== undefined) {
+                const foundPadding = element.styles.padding;
+                const brandPadding = brandProfile.spacing.padding;
+                const tolerance = 4;
+
+                if (Math.abs(foundPadding - brandPadding) > tolerance) {
+                    spacingViolations.push('padding');
+                }
+            }
+
+            if (element.styles.margin !== undefined) {
+                const foundMargin = element.styles.margin;
+                const brandMargin = brandProfile.spacing.margin;
+                const tolerance = 4;
+
+                if (Math.abs(foundMargin - brandMargin) > tolerance) {
+                    spacingViolations.push('margin');
+                }
+            }
+
+            if (spacingViolations.length > 0) {
+                elementViolations.push({
+                    type: 'spacing',
+                    expected: brandProfile.spacing,
+                    found: {
+                        padding: element.styles.padding,
+                        margin: element.styles.margin
+                    },
+                    element_id: element.element_id,
+                    severity: 'warning',
+                    message: `Spacing (${spacingViolations.join(', ')}) does not match brand spacing`,
+                    violations: spacingViolations
+                });
+            }
+        }
+
         violations.push(...elementViolations);
     });
 

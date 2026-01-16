@@ -84,6 +84,7 @@ function getActionType(violationType) {
         'font_family': 'update_font_family',
         'color': 'update_color',
         'background_color': 'update_background_color',
+        'contrast': 'update_color',
         'shadow': 'apply_shadow',
         'border': 'update_border',
         'spacing': 'apply_spacing'
@@ -151,6 +152,17 @@ function createFixAction(violation, brandProfile) {
 
         case 'spacing':
             return createSpacingAction(violation, brandProfile);
+
+        case 'contrast':
+            return {
+                action: 'update_color',
+                element_id: violation.element_id,
+                value: violation.expected,
+                description: `Fix contrast ratio: update color to meet WCAG AA standards`,
+                payload: {
+                    fill: violation.expected
+                }
+            };
 
         default:
             return null;
