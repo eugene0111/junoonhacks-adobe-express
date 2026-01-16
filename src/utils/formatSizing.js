@@ -1,11 +1,5 @@
-/**
- * Format-specific sizing rules for different post formats
- * Ensures sizing is strictly coherent with format type
- */
-
 export const FORMAT_SIZING_RULES = {
     instagram_post: {
-        // Instagram post: 1080x1080px (square)
         max_width: 1080,
         max_height: 1080,
         fonts: {
@@ -22,7 +16,6 @@ export const FORMAT_SIZING_RULES = {
         }
     },
     instagram_story: {
-        // Instagram story: 1080x1920px (vertical)
         max_width: 1080,
         max_height: 1920,
         fonts: {
@@ -39,7 +32,6 @@ export const FORMAT_SIZING_RULES = {
         }
     },
     facebook_post: {
-        // Facebook post: 1200x630px (landscape)
         max_width: 1200,
         max_height: 630,
         fonts: {
@@ -56,7 +48,6 @@ export const FORMAT_SIZING_RULES = {
         }
     },
     facebook_cover: {
-        // Facebook cover: 1200x675px
         max_width: 1200,
         max_height: 675,
         fonts: {
@@ -73,7 +64,6 @@ export const FORMAT_SIZING_RULES = {
         }
     },
     twitter_post: {
-        // Twitter post: 1200x675px
         max_width: 1200,
         max_height: 675,
         fonts: {
@@ -90,7 +80,6 @@ export const FORMAT_SIZING_RULES = {
         }
     },
     linkedin_post: {
-        // LinkedIn post: 1200x627px
         max_width: 1200,
         max_height: 627,
         fonts: {
@@ -107,7 +96,6 @@ export const FORMAT_SIZING_RULES = {
         }
     },
     banner: {
-        // Web banner: 728x90px (standard)
         max_width: 728,
         max_height: 90,
         fonts: {
@@ -124,7 +112,6 @@ export const FORMAT_SIZING_RULES = {
         }
     },
     poster: {
-        // Poster: 18x24 inches (2160x2880px at 120dpi)
         max_width: 2160,
         max_height: 2880,
         fonts: {
@@ -141,7 +128,6 @@ export const FORMAT_SIZING_RULES = {
         }
     },
     youtube_thumbnail: {
-        // YouTube thumbnail: 1280x720px
         max_width: 1280,
         max_height: 720,
         fonts: {
@@ -158,7 +144,6 @@ export const FORMAT_SIZING_RULES = {
         }
     },
     email_header: {
-        // Email header: 600x200px
         max_width: 600,
         max_height: 200,
         fonts: {
@@ -176,16 +161,10 @@ export const FORMAT_SIZING_RULES = {
     }
 };
 
-/**
- * Get sizing rules for a specific format
- * @param {string} format - The format type
- * @returns {Object} Format-specific sizing rules
- */
 export function getFormatSizing(format) {
     const normalizedFormat = format.toLowerCase().replace(/\s+/g, '_');
     
     if (!FORMAT_SIZING_RULES[normalizedFormat]) {
-        // Default to instagram_post if format not found
         console.warn(`Format "${format}" not found, using default instagram_post sizing`);
         return FORMAT_SIZING_RULES.instagram_post;
     }
@@ -193,11 +172,6 @@ export function getFormatSizing(format) {
     return FORMAT_SIZING_RULES[normalizedFormat];
 }
 
-/**
- * Normalize format name
- * @param {string} format - The format type
- * @returns {string} Normalized format name
- */
 export function normalizeFormat(format) {
     return format.toLowerCase().replace(/\s+/g, '_');
 }
