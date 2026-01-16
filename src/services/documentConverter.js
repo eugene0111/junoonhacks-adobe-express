@@ -1,3 +1,5 @@
+import { normalizeFontFamily, normalizeColor } from '../utils/css.js';
+
 export function convertAdobeDocument(adobeDocument) {
     const elements = [];
 
@@ -15,8 +17,7 @@ export function convertAdobeDocument(adobeDocument) {
 
         if (element.textStyle) {
             const rawFontFamily = element.textStyle.fontFamily || null;
-            convertedElement.styles.font_family = rawFontFamily;
-            convertedElement.styles.font_family_normalized = rawFontFamily ? normalizeFontFamily(rawFontFamily) : null;
+            convertedElement.styles.font_family = normalizeFontFamily(rawFontFamily);
             convertedElement.styles.font_size = element.textStyle.fontSize ? parseFloat(element.textStyle.fontSize) : null;
             convertedElement.styles.font_weight = element.textStyle.fontWeight || null;
             convertedElement.styles.font_style = element.textStyle.fontStyle || null;
@@ -27,18 +28,16 @@ export function convertAdobeDocument(adobeDocument) {
             let rawColor = null;
             if (typeof element.fill === 'string') {
                 rawColor = element.fill;
-            } else if (element.fill.type === 'solid') {
+            } else if (element.fill && typeof element.fill === 'object' && element.fill.type === 'solid') {
                 rawColor = element.fill.color || null;
-            } else if (element.fill.type === 'gradient') {
+            } else if (element.fill && typeof element.fill === 'object' && element.fill.type === 'gradient') {
                 rawColor = element.fill.stops?.[0]?.color || null;
             }
-            convertedElement.styles.color = rawColor;
-            convertedElement.styles.color_normalized = rawColor ? normalizeColor(rawColor) : null;
+            convertedElement.styles.color = normalizeColor(rawColor);
         }
 
         if (element.backgroundColor) {
-            convertedElement.styles.background_color = element.backgroundColor;
-            convertedElement.styles.background_color_normalized = normalizeColor(element.backgroundColor);
+            convertedElement.styles.background_color = normalizeColor(element.backgroundColor);
         }
 
         if (element.borderRadius) {
@@ -61,31 +60,4 @@ export function convertAdobeDocument(adobeDocument) {
     });
 
     return { elements };
-}
-
-export function normalizeFontFamily(fontFamily) {
-    if (!fontFamily) return null;
-    
-    return fontFamily
-        .replace(/['"]/g, '')
-        .split(',')[0]
-        .trim()
-        .toLowerCase();
-}
-
-export function normalizeColor(color) {
-    if (!color) return null;
-    
-    if (typeof color === 'string') {
-        return color.trim().toLowerCase();
-    }
-    
-    if (color.r !== undefined && color.g !== undefined && color.b !== undefined) {
-        const r = Math.round(color.r * 255).toString(16).padStart(2, '0');
-        const g = Math.round(color.g * 255).toString(16).padStart(2, '0');
-        const b = Math.round(color.b * 255).toString(16).padStart(2, '0');
-        return `#${r}${g}${b}`;
-    }
-    
-    return null;
 }

@@ -5,6 +5,7 @@ import brandRoutes from '../routes/brand.js';
 import validateRoutes from '../routes/validate.js';
 import fixRoutes from '../routes/fix.js';
 import { errorHandler } from '../middleware/errorHandler.js';
+import logger from '../utils/logger.js';
 
 export function createApp() {
     const app = express();
@@ -23,6 +24,15 @@ export function createApp() {
 
     app.use(cors());
     app.use(express.json());
+
+    app.use((req, res, next) => {
+        logger.info('Incoming request', {
+            method: req.method,
+            path: req.path,
+            ip: req.ip
+        });
+        next();
+    });
 
     app.use('/', indexRoutes);
     app.use('/brand', brandRoutes);

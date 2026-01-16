@@ -1,4 +1,4 @@
-import { normalizeFontFamily, normalizeColor } from './documentConverter.js';
+import { normalizeFontFamily, normalizeColor, areColorsEqual } from '../utils/css.js';
 
 export function detectViolations(brandProfile, documentData) {
     const violations = [];
@@ -11,7 +11,7 @@ export function detectViolations(brandProfile, documentData) {
         const elementViolations = [];
 
         if (element.styles.font_family) {
-            const normalizedFound = element.styles.font_family_normalized || normalizeFontFamily(element.styles.font_family);
+            const normalizedFound = element.styles.font_family;
             const normalizedHeading = normalizeFontFamily(brandProfile.fonts.heading);
             const normalizedBody = normalizeFontFamily(brandProfile.fonts.body);
 
@@ -23,7 +23,7 @@ export function detectViolations(brandProfile, documentData) {
                     found: element.styles.font_family,
                     element_id: element.element_id,
                     severity: 'error',
-                    message: `Font family "${element.styles.font_family}" does not match brand fonts (${brandProfile.fonts.heading} or ${brandProfile.fonts.body})`,
+                    message: `Font family does not match brand fonts (${brandProfile.fonts.heading} or ${brandProfile.fonts.body})`,
                     found_font_size: element.styles.font_size
                 });
             }
@@ -55,13 +55,13 @@ export function detectViolations(brandProfile, documentData) {
         }
 
         if (element.styles.color) {
-            const normalizedFound = element.styles.color_normalized || normalizeColor(element.styles.color);
+            const normalizedFound = element.styles.color;
             const brandColors = [
                 normalizeColor(brandProfile.colors.primary),
                 normalizeColor(brandProfile.colors.secondary),
                 normalizeColor(brandProfile.colors.accent),
                 normalizeColor(brandProfile.colors.text)
-            ];
+            ].filter(Boolean);
 
             if (!isColorInPalette(normalizedFound, brandColors)) {
                 const suggestedColor = findClosestBrandColor(normalizedFound, brandProfile.colors);
@@ -71,23 +71,23 @@ export function detectViolations(brandProfile, documentData) {
                     found: element.styles.color,
                     element_id: element.element_id,
                     severity: 'warning',
-                    message: `Color "${element.styles.color}" is not in the brand color palette`
+                    message: 'Color is not in the brand color palette'
                 });
             }
         }
 
         if (element.styles.background_color) {
-            const normalizedFound = element.styles.background_color_normalized || normalizeColor(element.styles.background_color);
+            const normalizedFound = element.styles.background_color;
             const brandBackground = normalizeColor(brandProfile.colors.background);
 
-            if (normalizedFound !== brandBackground) {
+            if (!areColorsEqual(normalizedFound, brandBackground)) {
                 elementViolations.push({
                     type: 'background_color',
                     expected: brandProfile.colors.background,
                     found: element.styles.background_color,
                     element_id: element.element_id,
                     severity: 'warning',
-                    message: `Background color "${element.styles.background_color}" does not match brand background color`
+                    message: 'Background color does not match brand background color'
                 });
             }
         }
@@ -107,11 +107,9 @@ function findClosestSize(foundSize, allowedSizes) {
 function isColorInPalette(color, palette) {
     if (!color) return false;
 
-    const normalizedColor = color.toLowerCase().trim();
-
     return palette.some(paletteColor => {
         if (!paletteColor) return false;
-        return normalizeColor(paletteColor) === normalizedColor;
+        return areColorsEqual(color, paletteColor);
     });
 }
 
