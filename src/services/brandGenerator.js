@@ -1,11 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getFormatSizing } from "../utils/formatSizing.js";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "AIzaSyD63aeeOvmHkDCNSXV8zat5p8M_0ukiNb8");
 
 
 export async function generateBrandProfile(brandData) {
-    const { brand_name, brand_statement, format, extracted_colors, extracted_fonts, extracted_tone } = brandData;
+    const { brand_name, brand_statement, format, extracted_colors, extracted_fonts, extracted_tone, extracted_borders, extracted_shadows } = brandData;
 
     
     const formatSizing = getFormatSizing(format);
@@ -28,6 +28,12 @@ Post Format: ${format}
     }
     if (extracted_tone) {
         prompt += `Detected Tone: ${extracted_tone}\n`;
+    }
+    if (extracted_borders && extracted_borders.length > 0) {
+        prompt += `Extracted Border Properties: ${extracted_borders.join(", ")}\n`;
+    }
+    if (extracted_shadows && extracted_shadows.length > 0) {
+        prompt += `Extracted Shadow Properties: ${extracted_shadows.join(", ")}\n`;
     }
 
     prompt += `
@@ -68,7 +74,7 @@ Required JSON structure:
     "blur": 12,
     "color": "#00000015"
   },
-  "tone": "professional|modern|friendly|luxury|playful"
+  "tone": "professional" (must be ONE of: professional, modern, friendly, luxury, or playful)
 }
 
 IMPORTANT:
@@ -76,13 +82,15 @@ IMPORTANT:
 2. Use the EXACT spacing values provided above - do not change them
 3. If colors were extracted from the website, prioritize using those colors
 4. If fonts were extracted, consider using those fonts if appropriate
-5. Choose colors that match the brand statement and tone
-6. Select modern, web-safe fonts that complement the brand
-7. Return ONLY valid JSON, no markdown formatting or code blocks
-8. Do NOT include any explanatory text before or after the JSON
-9. Ensure all JSON keys are properly quoted with double quotes
-10. Do NOT include trailing commas in arrays or objects
-11. The response must start with { and end with }
+5. If border properties were extracted, use them for the borders object
+6. If shadow properties were extracted, use them for the shadows object
+7. Choose colors that match the brand statement and tone
+8. Select modern, web-safe fonts that complement the brand
+9. Return ONLY valid JSON, no markdown formatting or code blocks
+10. Do NOT include any explanatory text before or after the JSON
+11. Ensure all JSON keys are properly quoted with double quotes
+12. Do NOT include trailing commas in arrays or objects
+13. The response must start with { and end with }
 `;
 
     try {
@@ -182,6 +190,22 @@ IMPORTANT:
         if (!brandProfile.fonts) brandProfile.fonts = {};
         if (!brandProfile.spacing) brandProfile.spacing = {};
 
+        // Normalize tone field - ensure it's a single value, not pipe-separated
+        if (brandProfile.tone && typeof brandProfile.tone === 'string') {
+            const validTones = ['professional', 'modern', 'friendly', 'luxury', 'playful'];
+            // If tone contains pipe, take the first valid one
+            if (brandProfile.tone.includes('|')) {
+                const tones = brandProfile.tone.split('|').map(t => t.trim().toLowerCase());
+                brandProfile.tone = tones.find(t => validTones.includes(t)) || validTones[0];
+            } else {
+                // Ensure it's a valid tone
+                const normalizedTone = brandProfile.tone.trim().toLowerCase();
+                brandProfile.tone = validTones.includes(normalizedTone) ? normalizedTone : validTones[0];
+            }
+        } else {
+            brandProfile.tone = 'professional';
+        }
+
         // Enforce format-specific sizing
         brandProfile.fonts.h1_size = formatSizing.fonts.h1_size;
         brandProfile.fonts.h2_size = formatSizing.fonts.h2_size;
@@ -219,10 +243,48 @@ IMPORTANT:
 function generateDefaultBrandProfile(format, brandData) {
     const formatSizing = getFormatSizing(format);
     
-    
+    // Use extracted colors if available
     const primaryColor = brandData.extracted_colors?.[0] || "#1E40AF";
     const secondaryColor = brandData.extracted_colors?.[1] || "#64748B";
     const accentColor = brandData.extracted_colors?.[2] || "#FACC15";
+    
+    // Parse border data from extracted borders
+    let borderRadius = 12;
+    let borderWidth = 2;
+    let borderStyle = "solid";
+    
+    if (brandData.extracted_borders && brandData.extracted_borders.length > 0) {
+        brandData.extracted_borders.forEach(border => {
+            if (border.startsWith('radius:')) {
+                const radius = parseInt(border.split(':')[1]);
+                if (!isNaN(radius)) borderRadius = radius;
+            } else if (border.startsWith('width:')) {
+                const width = parseInt(border.split(':')[1]);
+                if (!isNaN(width)) borderWidth = width;
+            } else if (border.startsWith('style:')) {
+                borderStyle = border.split(':')[1];
+            }
+        });
+    }
+    
+    // Parse shadow data from extracted shadows
+    let shadowEnabled = true;
+    let shadowX = 0;
+    let shadowY = 4;
+    let shadowBlur = 12;
+    let shadowColor = "#00000015";
+    
+    if (brandData.extracted_shadows && brandData.extracted_shadows.length > 0) {
+        const firstShadow = brandData.extracted_shadows[0];
+        const parts = firstShadow.split(',');
+        parts.forEach(part => {
+            const [key, value] = part.split(':');
+            if (key === 'x') shadowX = parseInt(value) || 0;
+            else if (key === 'y') shadowY = parseInt(value) || 4;
+            else if (key === 'blur') shadowBlur = parseInt(value) || 12;
+            else if (key === 'color') shadowColor = value || "#00000015";
+        });
+    }
     
     return {
         fonts: {
@@ -247,16 +309,16 @@ function generateDefaultBrandProfile(format, brandData) {
             gap: formatSizing.spacing.gap
         },
         borders: {
-            radius: 12,
-            width: 2,
-            style: "solid"
+            radius: borderRadius,
+            width: borderWidth,
+            style: borderStyle
         },
         shadows: {
-            enabled: true,
-            x: 0,
-            y: 4,
-            blur: 12,
-            color: "#00000015"
+            enabled: shadowEnabled,
+            x: shadowX,
+            y: shadowY,
+            blur: shadowBlur,
+            color: shadowColor
         },
         tone: brandData.extracted_tone || "professional"
     };
