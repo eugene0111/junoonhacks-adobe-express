@@ -1,13 +1,18 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getFormatSizing } from "../utils/formatSizing.js";
+import { getCachedProfile, setCachedProfile } from "../utils/cache.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 
 export async function generateBrandProfile(brandData) {
+    const cached = getCachedProfile(brandData);
+    if (cached) {
+        return cached;
+    }
+
     const { brand_name, brand_statement, format, extracted_colors, extracted_fonts, extracted_tone } = brandData;
 
-    
     const formatSizing = getFormatSizing(format);
 
     
@@ -202,6 +207,7 @@ IMPORTANT:
             hasShadows: !!brandProfile.shadows,
             hasTone: !!brandProfile.tone
         });
+        setCachedProfile(brandData, brandProfile);
         return brandProfile;
 
     } catch (error) {
@@ -211,6 +217,7 @@ IMPORTANT:
         // Return fallback profile
         console.log("Falling back to default brand profile");
         const fallbackProfile = generateDefaultBrandProfile(format, brandData);
+        setCachedProfile(brandData, fallbackProfile);
         return fallbackProfile;
     }
 }

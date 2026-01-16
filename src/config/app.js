@@ -4,6 +4,7 @@ import indexRoutes from '../routes/index.js';
 import brandRoutes from '../routes/brand.js';
 import validateRoutes from '../routes/validate.js';
 import fixRoutes from '../routes/fix.js';
+import toolsRoutes from '../routes/tools.js';
 import { errorHandler } from '../middleware/errorHandler.js';
 import logger from '../utils/logger.js';
 
@@ -38,6 +39,7 @@ export function createApp() {
     app.use('/brand', brandRoutes);
     app.use('/brand/validate', validateRoutes);
     app.use('/fix', fixRoutes);
+    app.use('/tools', toolsRoutes);
 
     app.use(errorHandler);
 

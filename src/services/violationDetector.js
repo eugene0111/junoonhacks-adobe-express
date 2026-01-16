@@ -1,4 +1,5 @@
 import { normalizeFontFamily, normalizeColor, areColorsEqual } from '../utils/css.js';
+import { validateColorContrast } from '../utils/contrastChecker.js';
 
 export function detectViolations(brandProfile, documentData) {
     const violations = [];
@@ -73,6 +74,23 @@ export function detectViolations(brandProfile, documentData) {
                     severity: 'warning',
                     message: 'Color is not in the brand color palette'
                 });
+            }
+
+            const background = element.styles.background_color || brandProfile.colors.background;
+            if (background) {
+                const contrast = validateColorContrast(normalizedFound, normalizeColor(background));
+                if (!contrast.meetsAA) {
+                    elementViolations.push({
+                        type: 'contrast',
+                        expected: contrast.suggestion || brandProfile.colors.text,
+                        found: element.styles.color,
+                        element_id: element.element_id,
+                        severity: 'error',
+                        message: `Color contrast ratio ${contrast.ratio} does not meet WCAG AA standards (minimum 4.5)`,
+                        contrast_ratio: contrast.ratio,
+                        meets_aa: contrast.meetsAA
+                    });
+                }
             }
         }
 

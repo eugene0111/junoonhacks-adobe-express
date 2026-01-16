@@ -83,7 +83,10 @@ function getActionType(violationType) {
         'font_size': 'update_font_size',
         'font_family': 'update_font_family',
         'color': 'update_color',
-        'background_color': 'update_background_color'
+        'background_color': 'update_background_color',
+        'shadow': 'apply_shadow',
+        'border': 'update_border',
+        'spacing': 'apply_spacing'
     };
     return actionMap[violationType] || 'unknown';
 }
@@ -95,7 +98,12 @@ function createFixAction(violation, brandProfile) {
                 action: 'update_font_size',
                 element_id: violation.element_id,
                 value: violation.expected,
-                description: `Update font size from ${violation.found}px to ${violation.expected}px`
+                description: `Update font size from ${violation.found}px to ${violation.expected}px`,
+                payload: {
+                    textStyle: {
+                        fontSize: violation.expected
+                    }
+                }
             };
 
         case 'font_family': {
@@ -104,7 +112,12 @@ function createFixAction(violation, brandProfile) {
                 action: 'update_font_family',
                 element_id: violation.element_id,
                 value: targetFont,
-                description: `Update font family from "${violation.found}" to "${targetFont}"`
+                description: `Update font family from "${violation.found}" to "${targetFont}"`,
+                payload: {
+                    textStyle: {
+                        fontFamily: targetFont
+                    }
+                }
             };
         }
 
@@ -113,7 +126,10 @@ function createFixAction(violation, brandProfile) {
                 action: 'update_color',
                 element_id: violation.element_id,
                 value: violation.expected,
-                description: `Update color from "${violation.found}" to "${violation.expected}"`
+                description: `Update color from "${violation.found}" to "${violation.expected}"`,
+                payload: {
+                    fill: violation.expected
+                }
             };
 
         case 'background_color':
@@ -121,12 +137,90 @@ function createFixAction(violation, brandProfile) {
                 action: 'update_background_color',
                 element_id: violation.element_id,
                 value: violation.expected,
-                description: `Update background color from "${violation.found}" to "${violation.expected}"`
+                description: `Update background color from "${violation.found}" to "${violation.expected}"`,
+                payload: {
+                    backgroundColor: violation.expected
+                }
             };
+
+        case 'shadow':
+            return createShadowAction(violation, brandProfile);
+
+        case 'border':
+            return createBorderAction(violation, brandProfile);
+
+        case 'spacing':
+            return createSpacingAction(violation, brandProfile);
 
         default:
             return null;
     }
+}
+
+function createShadowAction(violation, brandProfile) {
+    const shadow = brandProfile.shadows || {
+        enabled: true,
+        x: 0,
+        y: 4,
+        blur: 12,
+        color: '#00000015'
+    };
+
+    return {
+        action: 'apply_shadow',
+        element_id: violation.element_id,
+        value: shadow,
+        description: `Apply brand shadow (x: ${shadow.x}, y: ${shadow.y}, blur: ${shadow.blur})`,
+        payload: {
+            shadow: {
+                x: shadow.x,
+                y: shadow.y,
+                blur: shadow.blur,
+                color: shadow.color,
+                enabled: shadow.enabled
+            }
+        }
+    };
+}
+
+function createBorderAction(violation, brandProfile) {
+    const border = brandProfile.borders || {
+        radius: 12,
+        width: 2,
+        style: 'solid'
+    };
+
+    return {
+        action: 'update_border',
+        element_id: violation.element_id,
+        value: border,
+        description: `Apply brand border (radius: ${border.radius}px, width: ${border.width}px)`,
+        payload: {
+            borderRadius: border.radius,
+            borderWidth: border.width,
+            borderStyle: border.style
+        }
+    };
+}
+
+function createSpacingAction(violation, brandProfile) {
+    const spacing = brandProfile.spacing || {
+        padding: 24,
+        margin: 16,
+        gap: 12
+    };
+
+    return {
+        action: 'apply_spacing',
+        element_id: violation.element_id,
+        value: spacing,
+        description: `Apply brand spacing (padding: ${spacing.padding}px, margin: ${spacing.margin}px)`,
+        payload: {
+            padding: spacing.padding,
+            margin: spacing.margin,
+            gap: spacing.gap
+        }
+    };
 }
 
 function determineTargetFont(violation, brandProfile) {
