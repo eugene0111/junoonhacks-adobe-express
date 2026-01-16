@@ -79,6 +79,10 @@ IMPORTANT:
 5. Choose colors that match the brand statement and tone
 6. Select modern, web-safe fonts that complement the brand
 7. Return ONLY valid JSON, no markdown formatting or code blocks
+8. Do NOT include any explanatory text before or after the JSON
+9. Ensure all JSON keys are properly quoted with double quotes
+10. Do NOT include trailing commas in arrays or objects
+11. The response must start with { and end with }
 `;
 
     try {
@@ -87,25 +91,98 @@ IMPORTANT:
         const result = await model.generateContent(prompt);
         const response = result.response;
         
-
-        let responseText = response.text;
+        // Extract text from response
+        // The response.text is a getter, but we'll access candidates directly for reliability
+        let responseText = '';
         
+        // Primary method: Access text through candidates array (most reliable)
+        if (response.candidates && response.candidates.length > 0) {
+            const candidate = response.candidates[0];
+            if (candidate.content && candidate.content.parts) {
+                responseText = candidate.content.parts
+                    .filter(part => part.text) // Only get parts with text
+                    .map(part => part.text)
+                    .join('');
+            }
+        }
+        
+        // Validate we got text
+        if (!responseText || typeof responseText !== 'string' || responseText.trim() === '') {
+            console.error("Failed to extract text from response. Response structure:", {
+                hasCandidates: !!response.candidates,
+                candidatesLength: response.candidates?.length,
+                firstCandidateContent: response.candidates?.[0]?.content,
+                firstCandidateParts: response.candidates?.[0]?.content?.parts
+            });
+            throw new Error("No text content found in Gemini API response. Check API response structure.");
+        }
 
+        // Clean up markdown code blocks if present
         responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         
+        // Log the full response for debugging
+        console.log("Raw AI response length:", responseText.length, "characters");
+        console.log("Raw AI response (first 500 chars):", responseText.substring(0, 500));
+        console.log("Raw AI response (last 200 chars):", responseText.substring(Math.max(0, responseText.length - 200)));
         
+        // Remove any leading/trailing text that's not JSON
+        // Try to find JSON object in the response
         let brandProfile;
         try {
+            // First, try to parse the entire response
+            console.log("Attempting to parse JSON...");
             brandProfile = JSON.parse(responseText);
+            console.log("✓ JSON parsed successfully");
         } catch (parseError) {
+            console.error("JSON parse failed:", parseError.message);
+            console.error("Parse error at position:", parseError.message.includes('position') ? parseError.message : 'unknown');
+            // If that fails, try to extract JSON object from the response
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
-                brandProfile = JSON.parse(jsonMatch[0]);
+                let jsonToParse = jsonMatch[0];
+                
+                try {
+                    brandProfile = JSON.parse(jsonToParse);
+                } catch (secondParseError) {
+                    // If still failing, try to clean up common JSON issues
+                    let cleanedJson = jsonToParse
+                        // Remove trailing commas before closing braces/brackets
+                        .replace(/,(\s*[}\]])/g, '$1')
+                        // Remove comments (if any)
+                        .replace(/\/\/.*$/gm, '')
+                        .replace(/\/\*[\s\S]*?\*\//g, '')
+                        // Remove any control characters
+                        .replace(/[\x00-\x1F\x7F]/g, '')
+                        // Fix common issues with quotes
+                        .replace(/'/g, '"');
+                    
+                    try {
+                        brandProfile = JSON.parse(cleanedJson);
+                    } catch (finalError) {
+                        console.error("JSON Parse Error Details:");
+                        console.error("Original response:", responseText.substring(0, 1000));
+                        console.error("Extracted JSON:", jsonToParse.substring(0, 1000));
+                        console.error("Cleaned JSON:", cleanedJson.substring(0, 1000));
+                        console.error("Parse error at position:", finalError.message);
+                        throw new Error(`Failed to parse JSON from AI response: ${finalError.message}`);
+                    }
+                }
             } else {
-                throw new Error("Failed to parse JSON from AI response",parseError);
+                console.error("No JSON object found in response. Full response:", responseText);
+                throw new Error(`No valid JSON found in AI response. Response: ${responseText.substring(0, 200)}...`);
             }
         }
 
+        // Validate brandProfile structure before enforcing sizes
+        if (!brandProfile || typeof brandProfile !== 'object') {
+            throw new Error("Invalid brand profile structure from AI");
+        }
+
+        // Ensure required fields exist
+        if (!brandProfile.fonts) brandProfile.fonts = {};
+        if (!brandProfile.spacing) brandProfile.spacing = {};
+
+        // Enforce format-specific sizing
         brandProfile.fonts.h1_size = formatSizing.fonts.h1_size;
         brandProfile.fonts.h2_size = formatSizing.fonts.h2_size;
         brandProfile.fonts.h3_size = formatSizing.fonts.h3_size;
@@ -116,12 +193,25 @@ IMPORTANT:
         brandProfile.spacing.margin = formatSizing.spacing.margin;
         brandProfile.spacing.gap = formatSizing.spacing.gap;
 
+        console.log("✓ Successfully parsed and processed brand profile");
+        console.log("Brand profile structure:", {
+            hasFonts: !!brandProfile.fonts,
+            hasColors: !!brandProfile.colors,
+            hasSpacing: !!brandProfile.spacing,
+            hasBorders: !!brandProfile.borders,
+            hasShadows: !!brandProfile.shadows,
+            hasTone: !!brandProfile.tone
+        });
         return brandProfile;
 
     } catch (error) {
-        console.error("Error generating brand profile with AI:", error);
+        console.error("Error generating brand profile with AI:", error.message);
+        console.error("Error details:", error.stack);
         
-        return generateDefaultBrandProfile(format, brandData);
+        // Return fallback profile
+        console.log("Falling back to default brand profile");
+        const fallbackProfile = generateDefaultBrandProfile(format, brandData);
+        return fallbackProfile;
     }
 }
 
