@@ -29,7 +29,7 @@
     "eslint": "^9.39.2",
     "eslint-plugin-no-comments": "^1.1.10",
     "husky": "^9.1.7",
-    "lint-staged": "^16.2.7"
+    "lint-staged": "^16.2.7",
     "nodemon": "^3.1.11",
     "@google/generative-ai": "^0.21.0",
     "puppeteer": "^21.6.1",
