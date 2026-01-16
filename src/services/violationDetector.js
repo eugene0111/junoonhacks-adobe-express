@@ -37,7 +37,7 @@ export function detectViolations(brandProfile, documentData) {
     };
 
     // ==========================================
-    // 1. NEW SPATIAL VALIDATION LOGIC
+    // 1. SPATIAL VALIDATION LOGIC
     // ==========================================
     if (brandProfile.spacing) {
         const { padding, gap } = brandProfile.spacing;
@@ -52,6 +52,7 @@ export function detectViolations(brandProfile, documentData) {
 
             // A. Boundary & Padding Checks
             if (canvasWidth > 0) {
+                // ADDING DIMENSIONS TO COORDINATES to get the last point (Right/Bottom edges)
                 const rightEdge = bounds.x + bounds.width;
                 const bottomEdge = bounds.y + bounds.height;
                 
@@ -110,6 +111,7 @@ export function detectViolations(brandProfile, documentData) {
                 }
 
                 // Check Overlap
+                // Uses (x + width) to find the right edge for comparison
                 const isOverlapping = (
                     bounds.x < otherBounds.x + otherBounds.width &&
                     bounds.x + bounds.width > otherBounds.x &&

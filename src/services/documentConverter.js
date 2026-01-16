@@ -30,7 +30,7 @@ export function convertAdobeDocument(adobeDocument) {
 
     adobeDocument.elements.forEach((element, index) => {
         // 2. Robust Bounds Extraction
-        // Try 'bounds', then 'frame', then 'position'+'size', then direct x/y
+        // Try 'bounds', then 'frame', then 'dimensions' + pos, then 'size' + pos
         let bounds = { x: 0, y: 0, width: 0, height: 0 };
 
         if (element.bounds) {
@@ -47,8 +47,24 @@ export function convertAdobeDocument(adobeDocument) {
                 width: parseFloat(element.frame.width) || 0,
                 height: parseFloat(element.frame.height) || 0
             };
+        } else if (element.dimensions) {
+             // Handle case where dimensions are provided separately from position
+             let x = element.x !== undefined ? parseFloat(element.x) : 0;
+             let y = element.y !== undefined ? parseFloat(element.y) : 0;
+             
+             if (element.position) {
+                 x = parseFloat(element.position.x) || x;
+                 y = parseFloat(element.position.y) || y;
+             }
+
+             bounds = {
+                x: x,
+                y: y,
+                width: parseFloat(element.dimensions.width) || 0,
+                height: parseFloat(element.dimensions.height) || 0
+            };
         } else if (element.position) {
-            // Using user's potential format
+            // Using user's potential format with 'size'
             bounds = {
                 x: parseFloat(element.position.x) || 0,
                 y: parseFloat(element.position.y) || 0,
