@@ -138,6 +138,7 @@ IMPORTANT:
         
         // Log the full response for debugging
         console.log("Raw AI response length:", responseText.length, "characters");
+        console.log("scraped data:", brandData)
         console.log("Raw AI response (first 500 chars):", responseText.substring(0, 500));
         console.log("Raw AI response (last 200 chars):", responseText.substring(Math.max(0, responseText.length - 200)));
         

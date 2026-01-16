@@ -314,7 +314,7 @@ export async function crawlWebsite(url) {
             const avgBody = bodySizes.length > 0 
                 ? Math.round(bodySizes.reduce((a, b) => a + b, 0) / bodySizes.length)
                 : null;
-
+            console.log(data)
             return {
                 brand_name: data.brand_name,
                 brand_statement: data.brand_statement,
